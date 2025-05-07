@@ -1,43 +1,39 @@
-import streamlit as st #web приложение
-import requests #връзка с API
+import streamlit as st
+import requests
 import pandas as pd
-import matplotlib.pyplot as pet
+import matplotlib.pyplot as plt
 
 API_KEY = "86da0e105224b40c00ea70c6ccd41427"
-URL_Weather = "https://api.openweathermap.org/data/2.5/weather"
-URL_AirPollution = "http://api.openweathermap.org/data/2.5/air_pollution"
-
 city = "Plovdiv"
 
-request_url_weather = f"{URL_Weather}?q={city}&appid={API_KEY}&units=metric"
-
-response_weather = requests.get(request_url_weather)
+# --- Weather ---
+URL_Weather = "https://api.openweathermap.org/data/2.5/weather"
+weather_url = f"{URL_Weather}?q={city}&appid={API_KEY}&units=metric"
+response_weather = requests.get(weather_url)
 
 if response_weather.status_code == 200:
-    data = response_weather.json()
-    aqi = data['list'][0]['main']['aqi']
-    components = data['list'][0]['components']
+    weather_data = response_weather.json()
+    temperature = weather_data['main']['temp']
+    description = weather_data['weather'][0]['description']
     
-    print(f"AQI (Air Quality Index): {aqi}")
-    print("Pollutant Concentrations (μg/m³):")
-    for k, v in components.items():
-        print(f"  {k}: {v}")
+    st.subheader(f"Weather in {city}")
+    st.write(f"Temperature: {temperature} °C")
+    st.write(f"Conditions: {description}")
 else:
-    print(f"Failed to get air pollution data: {response.status_code}")\
+    st.error("Failed to get weather data")
 
+# --- Air Pollution ---
+URL_AirPollution = "https://api.openweathermap.org/data/2.5/air_pollution"
 latitude = 42.1354
 longitude = 24.7453
+pollution_url = f"{URL_AirPollution}?lat={latitude}&lon={longitude}&appid={API_KEY}"
+response_pollution = requests.get(pollution_url)
 
-request_url_pollution = f"{URL_AirPollution}?lat={latitude}&lon={longitude}&appid={API_KEY}"
-
-response_airpollution = requests.get(request_url_pollution)
-
-if response_airpollution.status_code == 200:
-    data = response_airpollution.json()
-    aqi = data['list'][0]['main']['aqi']
-    components = data['list'][0]['components']
+if response_pollution.status_code == 200:
+    pollution_data = response_pollution.json()
+    aqi = pollution_data['list'][0]['main']['aqi']
+    components = pollution_data['list'][0]['components']
     
-    # AQI Meaning
     aqi_meaning = {
         1: "Good",
         2: "Fair",
@@ -45,11 +41,11 @@ if response_airpollution.status_code == 200:
         4: "Poor",
         5: "Very Poor"
     }
-
-    print(f"Air Quality in Plovdiv:")
-    print(f"  AQI: {aqi} ({aqi_meaning.get(aqi, 'Unknown')})")
-    print("  Pollutants (μg/m³):")
-    for pollutant, value in components.items():
-        print(f"    {pollutant.upper()}: {value}")
+    
+    st.subheader(f"Air Quality in {city}")
+    st.write(f"AQI: {aqi} ({aqi_meaning.get(aqi)})")
+    
+    df = pd.DataFrame(components.items(), columns=["Pollutant", "Concentration (μg/m³)"])
+    st.bar_chart(df.set_index("Pollutant"))
 else:
-    print(f"Failed to get air pollution data: {response.status_code}")
+    st.error("Failed to get air pollution data")
